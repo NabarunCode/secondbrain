@@ -26,8 +26,8 @@
 
 ## Phase 1B — Catalog
 
-[ ] Design SQLite schema
-[ ] Design indexes
+[x] Design SQLite schema
+[x] Design indexes
 [ ] Build repository layer
 [ ] Create SQLite database
 [ ] Persist first asset
