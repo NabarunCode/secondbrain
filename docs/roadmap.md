@@ -75,3 +75,10 @@
 [ ] Blog series
 [ ] Architecture writeup
 [ ] Tutorial series
+
+---
+
+## Future Ideas (unscheduled, not yet a phase)
+
+[ ] Encrypt the SQLite catalog file at rest (e.g. SQLCipher), keyed to the user account/ULID — protects confidentiality (file theft/leak), complementary to CHECK constraints (which protect integrity, not secrecy). Raised 2026-07-02.
+[ ] Design a real "delete an asset" feature — likely soft-delete (status flag), not a hard SQL DELETE, consistent with this system never destroying data elsewhere (duplicates, failed-upload retries). Not designed yet; asset_events' RESTRICT-by-default FK currently just blocks hard deletes outright. Raised 2026-07-02.

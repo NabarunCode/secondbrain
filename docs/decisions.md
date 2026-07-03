@@ -302,3 +302,55 @@ Reason: What it should point to is a Phase 5 decision — avoid speculative desi
 
 Decision: Catalog code (Phase 1B) is built inside the existing empty `secondbrain/catalog/` package, not a new top-level package.
 Reason: Repo already scaffolds `catalog/`, `ingest/`, `storage/`, `cli/` as the intended layout.
+
+---
+
+### Correction: `asset_events` foreign key must not cascade-delete
+
+Decision:
+
+`asset_events.asset_id` has **no** `ON DELETE CASCADE` (unlike `asset_tags.asset_id`, which correctly does). SQLite's default (no `ON DELETE` clause, `foreign_keys=ON`) applies, which behaves as `RESTRICT`: deleting an `assets` row is blocked while `asset_events` rows still reference it.
+
+Reason:
+
+Caught by the author while writing the migration file: the original design (in the first architecture review pass) had `ON DELETE CASCADE` on `asset_events`, which would silently delete an asset's entire audit/event history the moment the asset itself was deleted — directly contradicting this table's own stated purpose ("append-only," "provenance-aware," per the original `asset_events` decision above). `asset_tags` cascading is fine (current-state metadata, no historical value once the asset is gone); `asset_events` cascading is not (historical record, whose value is precisely that it survives changes to the thing it describes).
+
+Note: there is no "delete an asset" feature designed anywhere in this project yet (no roadmap item, no lifecycle state for it). If one is designed later, a soft-delete (status flag) is more consistent with this system's existing philosophy (never destroy data — see duplicate handling, failed-upload retries) than a hard SQL `DELETE`. Parked in `roadmap.md` under "Future Ideas."
+
+---
+
+### Correction: explicit `NOT NULL` required on `assets.id`
+
+Decision:
+
+`assets.id TEXT PRIMARY KEY` gets an explicit `NOT NULL` added: `TEXT PRIMARY KEY NOT NULL`.
+
+Reason:
+
+Caught by the author while writing the migration file: unlike the SQL standard (where `PRIMARY KEY` always implies `NOT NULL`), SQLite only auto-enforces `NOT NULL` on a primary key when the column is specifically `INTEGER PRIMARY KEY` (SQLite's rowid alias case) — a documented, deliberate SQLite deviation kept for backward compatibility. Our `id` is `TEXT`, not `INTEGER`, so without the explicit `NOT NULL`, SQLite would silently accept a row with `id = NULL`. `asset_events.id` and `schema_migrations.version` are both `INTEGER PRIMARY KEY` and are unaffected; `asset_tags`'s composite `PRIMARY KEY (asset_id, tag)` was already written with explicit `NOT NULL` on both underlying columns, also unaffected.
+
+---
+
+### Hard Rule: syntax must be shown before it's required
+
+Decision:
+
+Claude must never ask the author to write a line of code or SQL containing a syntax pattern that hasn't already been explicitly demonstrated, with a working example, earlier in the same task. Explaining the underlying *concept* (what a partial index does, why `check_same_thread` matters) does **not** satisfy this — the literal *syntax* (how it's written, character for character) must also have been shown separately.
+
+Concrete check before writing any "now you write X" prompt: can I point to the exact syntax pattern, already demonstrated, for every new construct required in X? If not, show it first, then ask.
+
+Reason:
+
+This rule was promised once already today (after the PRAGMA/`conn.execute` incident) and broken twice more since (the multi-word negation/`sqlite3.Connection` mixup, and asking for a composite `PRIMARY KEY` with zero syntax shown). A promise made mid-conversation and not written down doesn't survive the next few turns, let alone a new session — exactly the failure mode this whole docs system exists to prevent. If the author ever has to ask "did you show me this syntax," that is a rule violation on Claude's part, not a gap in the author's preparation.
+
+---
+
+### Hard Rule: verify tool/CLI behavior in sandbox before asking the author to run it
+
+Decision:
+
+Before giving the author any command whose exact behavior Claude hasn't already confirmed (a specific tool's flags, a REPL's supported commands, a CLI's exact output), Claude tests it in its own sandbox first. Only hand over commands already confirmed to work.
+
+Reason:
+
+Claude told the author `python -m sqlite3`'s interactive shell supported `.tables` and `.read` (assuming parity with the native `sqlite3` CLI) without checking. It didn't. The author burned several back-and-forth turns debugging a tool behavior Claude could have verified itself in seconds, since Claude has its own sandbox with Python available. Same underlying failure as the syntax rule above (asserting something as fact without having actually confirmed it), extended to tool/CLI behavior generally, not just taught syntax.

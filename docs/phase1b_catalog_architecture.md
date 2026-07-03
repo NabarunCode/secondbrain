@@ -55,7 +55,7 @@ The lifecycle and Pydantic model describe the *shape* of an asset but not how it
 PRAGMA foreign_keys = ON;
 
 CREATE TABLE assets (
-    id                TEXT PRIMARY KEY,                 -- ULID
+    id                TEXT PRIMARY KEY NOT NULL,         -- ULID (SQLite doesn't imply NOT NULL for non-INTEGER PKs)
     asset_type        TEXT NOT NULL
                         CHECK (asset_type IN ('photo','note','document','audio','video','other')),
     storage_status    TEXT NOT NULL DEFAULT 'discovered'
@@ -112,10 +112,15 @@ CREATE TABLE asset_tags (
 
 CREATE INDEX idx_asset_tags_tag ON asset_tags(tag);
 
--- Append-only provenance trail
+-- Append-only provenance trail.
+-- Deliberately NO "ON DELETE CASCADE" here (unlike asset_tags) -- this table
+-- is an audit trail, and cascading it away with its asset would defeat the
+-- purpose of an audit trail. No ON DELETE clause = SQLite's default, which
+-- with foreign_keys=ON behaves as RESTRICT: deleting an assets row is
+-- blocked outright while asset_events rows still reference it.
 CREATE TABLE asset_events (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    asset_id    TEXT NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
+    asset_id    TEXT NOT NULL REFERENCES assets(id),
     from_status TEXT,
     to_status   TEXT NOT NULL,
     occurred_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),

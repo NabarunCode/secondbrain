@@ -15,33 +15,34 @@ def get_connection(db_path: Path = DB_PATH) -> sqlite3.Connection:
     """
     Open a SQLite connection configured for this project.
 
-    TODO 1:
-        Make sure the parent directory of db_path exists before connecting.
-        sqlite3.connect() will NOT create missing directories for you — it
-        will raise if "data/" doesn't exist yet. (Hint: Path has a method
-        for exactly this.)
-
-    TODO 2:
-        Open the connection with sqlite3.connect(db_path).
-        Think about this before you write it: we decided in the architecture
-        doc that connections are "short-lived, opened per operation" rather
-        than one long-lived global connection. Given that, do you think you
-        need the check_same_thread=False argument here, or not? Write down
-        your reasoning as a comment above this line — we'll check it
-        together.
-
-    TODO 3:
-        Set conn.row_factory = sqlite3.Row.
-        This makes rows come back as dict-like objects (row["filename"])
-        instead of plain tuples (row[3]) — the repository layer we build
-        next relies on this.
-
-    TODO 4:
-        Run the two PRAGMAs we just discussed, using conn.execute(...):
-          - PRAGMA journal_mode=WAL;
-          - PRAGMA foreign_keys=ON;
-
-    TODO 5:
-        Return the connection.
+    Ensures the database's parent directory exists, sets row_factory so
+    query results are accessible by column name, and applies the two
+    connection-level PRAGMAs this project relies on (WAL journaling,
+    foreign key enforcement). See docs/phase1b_catalog_architecture.md §6.
     """
-    raise NotImplementedError
+    # Make sure the parent directory exists — sqlite3.connect() creates the
+    # .db file itself automatically, but never creates missing directories.
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Connections here are short-lived: created, used, and discarded within
+    # a single operation, in the same thread that opened them — never
+    # handed off to a different thread. That's exactly the case the default
+    # check_same_thread=True guards correctly, so no override is needed.
+    # (If we ever switched to one long-lived shared connection, this
+    # reasoning would need to be revisited.)
+    conn = sqlite3.connect(db_path)
+
+    # Rows come back as sqlite3.Row objects: accessible by column name
+    # (row["filename"]) as well as by position, instead of plain tuples.
+    conn.row_factory = sqlite3.Row
+
+    # journal_mode is a property of the file itself, so this only truly
+    # needs to run once ever per file — but it's harmless and cheap to set
+    # on every connection, so we do it here for simplicity.
+    conn.execute("PRAGMA journal_mode=WAL;")
+
+    # foreign_keys is a per-connection setting that resets every time —
+    # this one genuinely must run on every single connection, no exceptions.
+    conn.execute("PRAGMA foreign_keys=ON;")
+
+    return conn
