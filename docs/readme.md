@@ -17,7 +17,7 @@ The documentation in this folder is considered the authoritative source of truth
 
 | File | Purpose | Updated when | Updated by |
 |---|---|---|---|
-| `chatgpt_context.md` | Fast bootstrap summary — current day, current phase, completed work, next steps, headline decisions. Read first in any new session. | `#EOD` only (kept accurate for the *next* `#SOD`, not touched mid-day) | Assistant |
+| `session_context.md` | Fast bootstrap summary — current day, current phase, completed work, next steps, headline decisions. Read first in any new session. | `#EOD` only (kept accurate for the *next* `#SOD`, not touched mid-day) | Assistant |
 | `project_context.md` | Static high-level info — goals, audience, author background, blog angle. Rarely changes. | Only when the project's purpose/audience/positioning itself changes | Author or assistant, on explicit request |
 | `architecture.md` | Cross-cutting, current-state system architecture — lifecycle, high-level data flow, component design. Stays scannable; does not carry phase-level implementation detail. | When a cross-cutting architectural decision changes the overall picture | Assistant, during the session it happens |
 | `phaseN_<topic>.md` (e.g. `phase1b_catalog_architecture.md`) | Deep-dive design doc for a single roadmap phase — full schema, trade-off tables, implementation plan. Created when a phase's detail would otherwise bloat `architecture.md`. `decisions.md` links to these rather than repeating them. | Once per phase, when that phase's architecture review happens; amended if the design changes before the phase closes | Assistant |
@@ -40,7 +40,7 @@ Applies to any assistant working on this project, not just ChatGPT. Requires rea
 
 ## `#SOD` — Beginning of a new session
 
-1. Read, in order: `chatgpt_context.md`, `project_context.md`, `architecture.md`, `decisions.md`, the highest-numbered `dayXX.md`, `roadmap.md`.
+1. Read, in order: `session_context.md`, `project_context.md`, `architecture.md`, `decisions.md`, the highest-numbered `dayXX.md`, `roadmap.md`.
 2. Read any `phaseN_<topic>.md` referenced by the current phase in `decisions.md` or `roadmap.md`.
 3. State back a short recap of where the project stands (current day, current phase, what's done, what's next) before doing anything else, so the author can correct anything stale.
 4. Continue the project from there — do not rely on chat history from a different session even if it happens to be visible.
@@ -49,27 +49,28 @@ Applies to any assistant working on this project, not just ChatGPT. Requires rea
 
 1. Fill in today's `dayXX.md`: Completed, Lessons Learned, Next Session (replace any `(fill in at EOD)` placeholders with what actually happened).
 2. Confirm every decision made this session is already in `decisions.md` (it should be — decisions get logged live, not batched).
-3. Update `chatgpt_context.md`: bump Current Day / Current Phase, refresh Completed and Next Session sections.
+3. Update `session_context.md`: bump Current Day / Current Phase, refresh Completed and Next Session sections.
 4. Check off any `roadmap.md` items that were actually finished (not just attempted).
 5. Remind the author of the commit commands below — do not commit automatically without being asked.
 
 ---
 
-## Commit documentation
+## Commit
 
-```bash
-git add docs
-git commit -m "docs: update project memory"
-```
-
----
-
-## Commit code separately
+One commit per session, docs and code together — they're explaining each
+other, not two separate changes. Split them only if a session produces two
+genuinely unrelated pieces of work, or docs are ready but code isn't.
 
 ```bash
 git add .
-git commit -m "<feature description>"
+git commit -m "<what this session actually did>"
+git push
 ```
+
+(Superseded 2026-07-03: this used to be two separate steps, docs then code.
+No CI or changelog tooling depends on that split, and it fought the
+project's own "code and docs are both part of the story" framing more than
+it helped. See `decisions.md`.)
 
 ---
 

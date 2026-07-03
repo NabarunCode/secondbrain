@@ -28,10 +28,10 @@
 
 [x] Design SQLite schema
 [x] Design indexes
-[ ] Build repository layer
-[ ] Create SQLite database
-[ ] Persist first asset
-[ ] Retrieve first asset
+[x] Build repository layer
+[x] Create SQLite database
+[x] Persist first asset
+[x] Retrieve first asset
 
 ---
 

@@ -257,8 +257,10 @@ Adopt `#SOD` (Start of Day) and `#EOD` (End of Day) as explicit session markers,
 
 Implementation:
 
-- `#SOD`: read `chatgpt_context.md`, `project_context.md`, `architecture.md`, `decisions.md`, and the latest `dayXX.md` — this is already the documented Session Workflow in `readme.md`, just given a trigger word.
-- `#EOD`: update `chatgpt_context.md`, `decisions.md`, and the current `dayXX.md`, and check off completed items in `roadmap.md`.
+- `#SOD`: read `session_context.md`, `project_context.md`, `architecture.md`, `decisions.md`, and the latest `dayXX.md` — this is already the documented Session Workflow in `readme.md`, just given a trigger word.
+- `#EOD`: update `session_context.md`, `decisions.md`, and the current `dayXX.md`, and check off completed items in `roadmap.md`.
+
+(`chatgpt_context.md` renamed to `session_context.md` 2026-07-03 — see correction below.)
 
 Reason:
 
@@ -291,7 +293,7 @@ Reason: `storage_status` alone only shows current state, not how an asset got th
 Decision: Repository layer is hand-rolled `sqlite3` + explicit Pydantic mapping, not SQLAlchemy/SQLModel.
 Reason: Matches "avoid unnecessary frameworks"; also the more teachable option for a first SQL project.
 
-Decision: Migrations are numbered plain-SQL files applied via a small runner using `PRAGMA user_version`, not Alembic.
+Decision: ~~Migrations are numbered plain-SQL files applied via a small runner using `PRAGMA user_version`, not Alembic.~~ Superseded 2026-07-03 — see correction below.
 Reason: No extra dependency; fully readable diffs; appropriate for a single-file SQLite DB.
 
 Decision: SQLite database file lives at `data/secondbrain.db`, outside the `secondbrain/` package.
@@ -328,6 +330,44 @@ Decision:
 Reason:
 
 Caught by the author while writing the migration file: unlike the SQL standard (where `PRIMARY KEY` always implies `NOT NULL`), SQLite only auto-enforces `NOT NULL` on a primary key when the column is specifically `INTEGER PRIMARY KEY` (SQLite's rowid alias case) — a documented, deliberate SQLite deviation kept for backward compatibility. Our `id` is `TEXT`, not `INTEGER`, so without the explicit `NOT NULL`, SQLite would silently accept a row with `id = NULL`. `asset_events.id` and `schema_migrations.version` are both `INTEGER PRIMARY KEY` and are unaffected; `asset_tags`'s composite `PRIMARY KEY (asset_id, tag)` was already written with explicit `NOT NULL` on both underlying columns, also unaffected.
+
+---
+
+### Correction: versioned migration runner replaced with a single idempotent `schema.sql`
+
+Decision:
+
+Dropped the numbered-migration-files + `PRAGMA user_version` runner (`migrate.py`, `migrations/000N_*.sql`, `schema_migrations` table) built on Day 04. Replaced with `secondbrain/catalog/schema.sql` (every statement `CREATE ... IF NOT EXISTS`) plus `secondbrain/catalog/schema.py::init_db(conn)`, which just executes that one file. Safe to call on every app startup, new database or existing one.
+
+Reason:
+
+The author pushed back: `data/secondbrain.db` holds zero real data — Phase 2 (ingestion) hasn't run yet — so there is nothing a migration needs to preserve right now. The entire point of versioned migrations is applying schema changes to a database *without losing existing data*; with no existing data, that problem doesn't exist yet, and the runner (tracking which of potentially many files had been applied, in order, exactly once) was solving a problem — multiple migration files — that also didn't exist yet (there was exactly one). Same shape of mistake as the transaction/rollback over-engineering caught earlier the same day: building for a scenario that will exist later instead of the one that exists now.
+
+When this decision should be revisited: the day `data/secondbrain.db` holds real photos/documents worth not losing (Phase 2+) and the schema needs to change out from under that real data. At that point `CREATE TABLE IF NOT EXISTS` stops being sufficient — it only creates *new* tables, it cannot `ALTER` an existing one safely — and a real migration mechanism becomes a genuine, not speculative, need. Until then: edit `schema.sql` directly, delete `data/secondbrain.db`, let `init_db()` recreate it.
+
+---
+
+### Correction: `chatgpt_context.md` renamed to `session_context.md`
+
+Decision:
+
+Renamed `docs/chatgpt_context.md` to `docs/session_context.md`. All references updated in `readme.md`, `decisions.md`, and `docs/command for chatgpt.txt` (content only — that file's own name stays as-is, since it genuinely is the ChatGPT-specific copy-paste bootstrap block, used because ChatGPT lacks direct file access the way a Cowork session has).
+
+Reason:
+
+The file's own opening line already said the `#SOD`/`#EOD` workflow "applies to any assistant working on this project, not just ChatGPT." The name was a leftover from before Cowork/Claude sessions existed, no longer matched what the file actually said or did. References inside historical `dayXX.md` logs were left as-is (they're an accurate record of what the file was called at the time, not a live spec).
+
+---
+
+### Correction: git commit convention — one combined commit per session, not docs/code split
+
+Decision:
+
+`readme.md`'s "Commit documentation" / "Commit code separately" two-step convention replaced with a single `git add . && git commit && git push` per session.
+
+Reason:
+
+The split convention was written on Day 03 without being tested against how work actually happens here. It's a team-project pattern (clean changelog generation, `git bisect` isolating docs noise from code regressions) that doesn't apply to a solo project with no CI and no automated tests yet. It also worked against the project's own stated framing — "the code *and* the docs in this repo are both part of the story" — by putting them in separate commits. Same root issue as the migration-runner correction above: adopting a convention that sounds like good practice in the abstract without checking it against this project's actual current stage.
 
 ---
 

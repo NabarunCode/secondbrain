@@ -43,7 +43,7 @@ The lifecycle and Pydantic model describe the *shape* of an asset but not how it
 | 5 | Timestamps | `TEXT` ISO-8601 UTC | Human-readable in `sqlite3` CLI, sorts correctly as text, round-trips cleanly with Python's `datetime`. |
 | 6 | State-transition history | New table: `asset_events` (append-only) | `storage_status` alone only shows current state, not how an asset got there or what failed when. |
 | 7 | Repository layer | Hand-rolled `sqlite3` + Pydantic mapping, not SQLAlchemy/SQLModel | Matches "avoid unnecessary frameworks"; more teachable for a first SQL project. |
-| 8 | Migrations | Numbered plain-SQL files + a tiny runner using `PRAGMA user_version` | No extra dependency; fully readable diffs. |
+| 8 | Migrations | ~~Numbered plain-SQL files + a tiny runner using `PRAGMA user_version`~~ Superseded 2026-07-03: single idempotent `schema.sql` (`CREATE ... IF NOT EXISTS`), no versioning | No real data exists yet to preserve across schema changes — see `decisions.md`. |
 | 9 | DB file location | `data/secondbrain.db`, outside the `secondbrain/` package | Mirrors the existing production-code vs experiments separation. |
 | 10 | `embedding_id` | Column stays, no table yet | What it points to is a Phase 5 decision — avoid speculative design now. |
 
@@ -128,13 +128,9 @@ CREATE TABLE asset_events (
 );
 
 CREATE INDEX idx_asset_events_asset_id ON asset_events(asset_id, occurred_at);
-
-CREATE TABLE schema_migrations (
-    version     INTEGER PRIMARY KEY,
-    filename    TEXT NOT NULL,
-    applied_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
-);
 ```
+
+No `schema_migrations` table — see §7. Every `CREATE TABLE`/`CREATE INDEX` above is actually written as `CREATE ... IF NOT EXISTS` in the real `schema.sql`; shown without it here for readability.
 
 ## 5. Repository Layer
 
@@ -146,9 +142,8 @@ secondbrain/
 ├── catalog/                   # existing empty folder — Phase 1B lives here
 │   ├── __init__.py
 │   ├── connection.py          # get_connection(): sqlite3.connect + PRAGMAs (WAL, foreign_keys)
-│   ├── migrate.py             # runner: reads PRAGMA user_version, applies pending *.sql files
-│   ├── migrations/
-│   │   └── 0001_initial_schema.sql
+│   ├── schema.py              # init_db(conn): executes schema.sql, safe to call every startup
+│   ├── schema.sql             # CREATE TABLE/INDEX IF NOT EXISTS, no versioning
 │   └── asset_repository.py
 ├── ingest/                    # existing empty folder — Phase 2, not touched this session
 ├── storage/                   # existing empty folder — HF Bucket blob wrapper, Phase 2
@@ -188,9 +183,9 @@ Row ↔ Pydantic mapping is explicit (`sqlite3.Row` → `dict` → `Asset.model_
 
 ## 7. Migration Strategy
 
-- `secondbrain/catalog/migrations/000N_description.sql`, applied in order.
-- Runner: read `PRAGMA user_version`; for each migration file with version > current, run it inside a transaction, then `PRAGMA user_version = N` and insert a row into `schema_migrations`.
-- No rollback tooling in v1 — "restore from the last backup" is the rollback story for a single-developer local SQLite file.
+Superseded 2026-07-03 — see `decisions.md` for the full reasoning. Summary: no real data exists yet in `data/secondbrain.db` (Phase 2 hasn't run), so there's nothing a migration needs to preserve. `secondbrain/catalog/schema.sql` writes every table/index as `CREATE ... IF NOT EXISTS`; `schema.py::init_db(conn)` just executes that file, safe to call on every startup. No version number, no `schema_migrations` table, no runner.
+
+This is a deliberate placeholder, not a final answer: when a schema change is needed today, edit `schema.sql` directly and delete `data/secondbrain.db` to pick it up. A real migration mechanism (numbered files applied in order, tracked so each runs exactly once) becomes a genuine need — worth building then, not before — the day this database holds real assets that can't just be recreated, and a schema change needs to `ALTER` an existing table rather than just add a new one.
 
 ## 8. Trade-offs, Explicit
 
@@ -202,15 +197,15 @@ Row ↔ Pydantic mapping is explicit (`sqlite3.Row` → `dict` → `Asset.model_
 | Partial unique index for dedup | Business rule enforced by the database, not just application code | SQLite-specific syntax (fine — not porting DBs) |
 | `asset_events` audit table | Full provenance, debuggable resumes, blog material | Every transition writes to two tables instead of one |
 | Hand-rolled repository over ORM | Full visibility into every query, no framework to learn | More boilerplate than SQLAlchemy would generate |
-| Plain-SQL migrations over Alembic | Zero extra dependency, fully readable diffs | No autogenerate diffing, no built-in downgrade |
+| Single idempotent `schema.sql` over versioned migrations | Zero extra dependency, zero moving parts, matches the actual current need (no data to preserve yet) | Can't safely `ALTER` a table with real data in it — will need a real migration mechanism once Phase 2 populates the catalog |
 
 ## 9. Implementation Plan
 
 See `docs/day03.md` onward for the day-by-day breakdown of this plan, paced for learning rather than fastest completion.
 
 1. `secondbrain/catalog/connection.py` — connection factory with WAL + foreign_keys PRAGMAs.
-2. `secondbrain/catalog/migrations/0001_initial_schema.sql` — schema from §4.
-3. `secondbrain/catalog/migrate.py` — migration runner (`user_version` check + apply pending).
+2. `secondbrain/catalog/schema.sql` — schema from §4, written as `CREATE ... IF NOT EXISTS`.
+3. `secondbrain/catalog/schema.py` — `init_db(conn)`, executes `schema.sql`.
 4. `secondbrain/catalog/asset_repository.py` — implement `create`, `get`, `get_by_sha256_verified`, `transition_status`, `add_tags`, `get_tags`.
 5. `experiments/test_repository.py` — round-trip test against `:memory:` SQLite.
 6. Persist and retrieve the first real `Asset` object end-to-end.

@@ -41,9 +41,9 @@ This is a working build log, not a finished product. It's being built in public,
 
 ## 📍 Status
 
-**Day 03 · Phase 1B — SQLite Catalog Design.**
+**Day 04 · Phase 1B — SQLite Catalog — complete.**
 
-The domain model and asset lifecycle are designed and implemented. The SQLite catalog schema and connection layer are written and verified. There is **no ingestion pipeline and no UI yet** — nothing uploads to a bucket automatically. Full phase-by-phase progress lives in [`docs/roadmap.md`](docs/roadmap.md).
+The domain model, asset lifecycle, SQLite schema, and full repository layer (`create`, `get`, `transition_status`, `add_tags`/`get_tags`, `get_by_sha256_verified`) are designed, implemented, and verified end-to-end against a real database file. There is **no ingestion pipeline and no UI yet** — nothing uploads to a bucket automatically, and everything persisted so far is one dummy test asset, not real files. Full phase-by-phase progress lives in [`docs/roadmap.md`](docs/roadmap.md).
 
 ## 🤔 Why This Project Exists
 
@@ -116,6 +116,7 @@ Worth reading if you want the real story, not just the code:
 - [`docs/day01.md`](docs/day01.md) — first HF Bucket upload
 - [`docs/day02.md`](docs/day02.md) — asset lifecycle, dedup strategy, Pydantic models
 - [`docs/day03.md`](docs/day03.md) — SQLite catalog schema and connection layer
+- [`docs/day04.md`](docs/day04.md) — repository layer, migration-runner reversal, Phase 1B closeout
 
 </details>
 
@@ -125,7 +126,7 @@ Worth reading if you want the real story, not just the code:
 |---|---|---|
 | 0 | Project setup | ✅ Done |
 | 1A | Domain model | ✅ Done |
-| 1B | SQLite catalog | 🚧 In progress |
+| 1B | SQLite catalog | ✅ Done |
 | 2 | Ingestion pipeline | ⬜ Not started |
 | 3 | Search | ⬜ Not started |
 | 4 | Gradio UI | ⬜ Not started |
@@ -136,7 +137,8 @@ Worth reading if you want the real story, not just the code:
 
 ```bash
 uv sync
-uv run python experiments/test_asset.py   # exercises the Asset model
+uv run python experiments/test_asset.py       # exercises the Asset model
+uv run python experiments/test_repository.py  # persists + retrieves a real Asset via SQLite
 ```
 
 There's no end-to-end pipeline yet — that's Phase 2.

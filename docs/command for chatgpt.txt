@@ -1,6 +1,6 @@
 Read:
 
-docs/chatgpt_context.md
+docs/session_context.md
 docs/project_context.md
 docs/architecture.md
 docs/decisions.md
