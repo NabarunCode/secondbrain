@@ -8,3 +8,19 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Secrets -- HF tokens etc. (python-dotenv reads these; never commit them)
+.env
+.env.*
+
+# The real SQLite catalog and any personal data it references.
+# This is the whole point of the project -- it must never leave your machine
+# via git. Test/throwaway databases are covered by the *.db pattern below.
+data/
+
+# SQLite database files anywhere (main db, WAL/journal sidecar files,
+# and one-off test files like the schema_check.db from Day 03)
+*.db
+*.db-wal
+*.db-shm
+*.db-journal
