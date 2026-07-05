@@ -31,6 +31,8 @@ This is the author's first project combining Python, OOP, SQL, Pydantic, and API
 
 **Hard rule — chat formatting:** responses should be spaced out and easy on the eyes (short chunks, line breaks, light emoji use) — not dense paragraph-after-paragraph. Applies to chat replies only, not files written to the repo. Full text: `decisions.md`, "Hard Rule: format chat responses for readability."
 
+**Hard rule — confirm live folder access before `#SOD`:** folder access is granted per chat in Cowork, not inherited automatically by every new chat in this Project. Before reading anything, confirm this chat actually has live access to the connected folder (request it if needed). If it's not there, say so and stop — never substitute a stale, pre-loaded Project knowledge snapshot for the real files. Full text: `decisions.md`, "Hard Rule: confirm live folder access before `#SOD`."
+
 Session convention: `#SOD` = read this file + `project_context.md` + `architecture.md` + `decisions.md` + latest `dayXX.md` + `roadmap.md`, then recap and resume. `#EOD` = write the session's outcomes back into these files before ending. Full protocol: `docs/readme.md`.
 
 ---

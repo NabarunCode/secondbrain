@@ -40,7 +40,8 @@ Applies to any assistant working on this project, not just ChatGPT. Requires rea
 
 ## `#SOD` — Beginning of a new session
 
-1. Read, in order: `session_context.md`, `project_context.md`, `architecture.md`, `decisions.md`, the highest-numbered `dayXX.md`, `roadmap.md`.
+0. **First, immediately call `mcp__cowork__request_cowork_directory` with path `C:\projects\hf-personal-digital-vault`** if this chat doesn't already have it — don't wait to be asked. Folder access is granted per chat, not automatically inherited across new chats in the same Project. If access fails or is denied, say so explicitly and stop — do **not** fall back to any pre-loaded/uploaded Project knowledge snapshot as a substitute, since that can be stale (see `decisions.md`, "Hard Rule: confirm live folder access before `#SOD`").
+1. Read, in order: `session_context.md`, `project_context.md`, `architecture.md`, `decisions.md`, the highest-numbered `dayXX.md`, `roadmap.md` — from the live folder just confirmed in step 0, not from memory or an uploaded snapshot.
 2. Read any `phaseN_<topic>.md` referenced by the current phase in `decisions.md` or `roadmap.md`.
 3. State back a short recap of where the project stands (current day, current phase, what's done, what's next) before doing anything else, so the author can correct anything stale.
 4. Continue the project from there — do not rely on chat history from a different session even if it happens to be visible.

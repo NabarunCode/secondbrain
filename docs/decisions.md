@@ -445,3 +445,15 @@ Claude's chat responses (not files written to the repo — those stay plain pros
 Reason:
 
 The author found long paragraph-after-paragraph responses hard to read. Explicitly requested this be persisted as a standing rule, not a one-off ask — same reasoning as the other two Hard Rules: a preference stated once mid-conversation doesn't survive into the next session unless it's written down.
+
+---
+
+### Hard Rule: confirm live folder access before `#SOD` — never fall back to a stale Project knowledge snapshot
+
+Decision:
+
+Before doing anything else in a new `#SOD`, confirm this specific chat actually has live access to the connected local folder (request it if not already granted). Only read `session_context.md`/`decisions.md`/etc. from that live folder. If live access can't be confirmed, say so plainly and stop — never substitute a Project's pre-loaded/uploaded knowledge as a stand-in for the real files.
+
+Reason:
+
+Folder access in Cowork is granted per chat, not automatically inherited by every new chat in the same Project. A new chat ran `#SOD` and recapped the project as stuck at "Day 02, Phase 1B all unchecked" — wildly stale, from a separately-uploaded Project knowledge snapshot, not the real (fully current) files. The docs-as-memory system itself was working fine; the failure was a new chat silently falling back to stale attached knowledge instead of the live folder, without ever surfacing that it had done so. `#SOD` must fail loudly on missing folder access, not silently substitute something stale for it.

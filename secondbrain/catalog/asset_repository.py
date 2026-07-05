@@ -134,7 +134,6 @@ class AssetRepository:
             return None
         return self._asset_from_row(row)
 
-        #raise NotImplementedError
 
     def add_tags(self, asset_id: str, tags: list[str]) -> None:
         exists = self.conn.execute(
