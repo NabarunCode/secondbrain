@@ -50,6 +50,11 @@ Per the Day 03 plan: build the migration runner, then the repository layer. What
 
 - `docs/roadmap.md` — all six Phase 1B items now checked: schema, indexes, repository layer, database creation, persist, retrieve.
 
+**Documentation housekeeping:**
+
+- Renamed `docs/chatgpt_context.md` → `docs/session_context.md`. The file's own text already said the `#SOD`/`#EOD` workflow applies to "any assistant working on this project, not just ChatGPT" — the name was a leftover from before Cowork/Claude sessions existed. Updated every reference (`readme.md`, `decisions.md`, `docs/command for chatgpt.txt`). Left `chatgpt_context.md` as a one-line pointer stub (same disk-delete limitation as `migrate.py`). `docs/command for chatgpt.txt` keeps its own name — it's genuinely the ChatGPT-specific copy-paste bootstrap block, since ChatGPT lacks direct file access the way a Cowork session has; only its file reference was updated.
+- Git commit convention simplified: `readme.md`'s old two-step "commit docs, then commit code separately" replaced with one combined commit per session. That split was written Day 03 without being checked against how the project actually works — it's a team/CI pattern (clean changelog generation, `git bisect` isolating docs noise) that doesn't apply to a solo project with no CI yet, and it fought the project's own "code and docs are both part of the story" framing by keeping them in separate commits. Same root issue as the migration-runner correction: adopting a convention that sounds like good practice in the abstract without checking it against this project's actual current stage. Logged in `decisions.md`.
+
 ---
 
 # Environment Note (Claude's side, not a project issue)
@@ -63,6 +68,7 @@ Claude's sandbox has an intermittent read-lag on this mounted repo: files edited
 - The migration-runner detour and the earlier transaction/rollback over-engineering (same week) are the same root mistake: designing for the phase after the one you're actually in. Worth an explicit check going forward — "does this solve a problem that exists right now, or one that will exist later" — rather than relying on getting caught each time.
 - When something breaks, fix the actual failure mode, not just the trigger. Generating a random id would have stopped the crash without making `create()` handle duplicates correctly — the author caught this distinction immediately.
 - Proportion matters, not just direction: WAL and the migration runner are the same *category* of "solving a future phase's problem early," but very different in cost to keep or reverse. Not everything in that category is worth cutting — worth weighing case by case instead of applying the lesson mechanically.
+- The migration runner wasn't the only convention adopted today without being checked against actual project scale — the docs/code split commit convention was the same mistake, caught the same way (the author asking "why not just do the simpler thing"). Worth actively re-checking *conventions*, not just code, against "does this fit a solo project with no CI," not assuming a written-down rule is automatically right just because it's written down.
 
 ---
 
@@ -77,4 +83,10 @@ Phase 1B is functionally complete. Next is where real files enter the picture fo
 5. Upload pipeline to HF Buckets.
 6. Verification step, transitioning assets through the real lifecycle (`transition_status()` gets used for real instead of in a test).
 
-Before starting: `git status`/`git log` looked inconsistent in Claude's sandbox today (see Environment Note) — worth checking directly on the author's machine before committing today's work, rather than trusting the sandbox's read of it.
+Before starting: `git status`/`git log` looked inconsistent in Claude's sandbox today (see Environment Note) — worth checking directly on the author's machine before committing today's work, rather than trusting the sandbox's read of it. Commit today's work as one combined commit (see `readme.md`'s updated convention):
+
+```bash
+git add .
+git commit -m "Complete Phase 1B: full repository layer, drop migration runner for idempotent schema.sql"
+git push
+```

@@ -80,3 +80,12 @@ CREATE INDEX IF NOT EXISTS idx_assets_asset_type ON assets(asset_type);
 CREATE INDEX IF NOT EXISTS idx_assets_duplicate_of ON assets(duplicate_of);
 CREATE INDEX IF NOT EXISTS idx_asset_tags_tag ON asset_tags(tag);
 CREATE INDEX IF NOT EXISTS idx_asset_events_asset_id ON asset_events(asset_id, occurred_at);
+
+-- TODO (Phase 2 Discovery, docs/phase2_ingestion_architecture.md §4):
+-- Add idx_assets_local_path_active -- a UNIQUE INDEX on assets(local_path),
+-- partial: WHERE storage_status != 'failed'. Same shape as
+-- idx_assets_sha256_verified two lines above, just a different column and
+-- a different WHERE condition. Stops Discovery from creating a second
+-- catalog row for a file it's already tracking.
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_assets_local_path_active ON assets(local_path) WHERE storage_status!='failed';

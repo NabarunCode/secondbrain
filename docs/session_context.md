@@ -12,21 +12,24 @@ hf-personal-digital-vault
 
 ## Current Day
 
-Day 04 (complete — Phase 1B closed out, see Next Session)
+Day 05 (in progress — Phase 2 Discovery design + partial implementation, see Next Session)
 
 ---
 
 ## Current Phase
 
-Phase 1B — SQLite Catalog — COMPLETE. Next: Phase 2 — Ingestion.
+Phase 1B — SQLite Catalog — COMPLETE.
+Phase 2 — Ingestion — IN PROGRESS (Discovery sub-step only so far; 5 more sub-steps remain: hashing, dedup, metadata, upload, verification).
 
 ---
 
-## Working Mode (set Day 03)
+## Working Mode (set Day 03, reaffirmed Day 04)
 
-This is the author's first project combining Python, OOP, SQL, Pydantic, and API-based platforms. Learning is the primary goal, not fastest completion. Assistant scaffolds files with TODOs and deep-dive explanations; author writes the actual logic; assistant reviews and quizzes before advancing. Full agreement: `decisions.md` (2026-07-02).
+This is the author's first project combining Python, OOP, SQL, Pydantic, and API-based platforms. Learning is the primary goal, not fastest completion. Assistant scaffolds files with TODOs and deep-dive explanations; author writes the actual logic; assistant reviews and quizzes before advancing. Full agreement: `decisions.md` (2026-07-02). Day 04's repository-layer code was written directly by Claude (a drift from this); reaffirmed explicitly for Phase 2 onward — see `decisions.md`, "Reaffirmed: scaffold-and-teach working mode."
 
 **Hard rule, violated repeatedly on Day 03 before being written down — read this every session:** never ask the author to write a line containing syntax that hasn't been explicitly demonstrated first, with a working example. Explaining the *concept* is not enough; the literal *syntax* must be shown too. Full text: `decisions.md`, "Hard Rule: syntax must be shown before it's required."
+
+**Hard rule — chat formatting:** responses should be spaced out and easy on the eyes (short chunks, line breaks, light emoji use) — not dense paragraph-after-paragraph. Applies to chat replies only, not files written to the repo. Full text: `decisions.md`, "Hard Rule: format chat responses for readability."
 
 Session convention: `#SOD` = read this file + `project_context.md` + `architecture.md` + `decisions.md` + latest `dayXX.md` + `roadmap.md`, then recap and resume. `#EOD` = write the session's outcomes back into these files before ending. Full protocol: `docs/readme.md`.
 
@@ -149,6 +152,7 @@ Completed:
 - Proactively re-reviewed the rest of the Phase 1B code for the same "solving a future phase's problem early" pattern. Found one candidate (WAL journal mode, justified by a Phase 4/Gradio concern) and explicitly decided to keep it — different cost/benefit than the migration runner (one PRAGMA line either way).
 - **Phase 1B closed out**: all `roadmap.md` items checked.
 - Renamed `docs/chatgpt_context.md` → `docs/session_context.md` — the file's own text already said it applies to "any assistant working on this project, not just ChatGPT"; the name hadn't matched that in a while. `docs/command for chatgpt.txt` (the literal copy-paste bootstrap block for ChatGPT sessions specifically, which lack file access) keeps its name — that one's genuinely ChatGPT-specific — only its file reference was updated.
+- Simplified the git commit convention in `readme.md`: one combined commit per session instead of docs/code split. The split was a team/CI convention adopted Day 03 without checking it fit a solo, no-CI project — same root mistake as the migration runner, caught the same way.
 
 Created / replaced:
 
@@ -159,6 +163,23 @@ secondbrain/catalog/schema.sql          (replaces migrations/0001_initial_schema
 secondbrain/catalog/schema.py           (replaces migrate.py)
 secondbrain/catalog/asset_repository.py (complete: all 6 methods)
 ```
+
+---
+
+### Day 05
+
+Phase 2 (Ingestion) kicked off — Discovery sub-step only, design + partial implementation. Full detail: `docs/day05.md`.
+
+Completed:
+
+- Reaffirmed scaffold-and-teach working mode for Phase 2 onward (Day 04's code was written directly by Claude, a drift). New Hard Rule added: chat responses should be spaced/readable, not dense paragraphs.
+- `docs/phase2_ingestion_architecture.md` written — Discovery design: `pathlib.rglob()` traversal, extension→`AssetType` lookup table (`note` never produced by Discovery), `mimetypes.guess_type()` for mime type, skip-and-report error handling, and a re-scan duplicate-prevention rule (check `get_by_local_path()` before `create()`, enforced by a new partial unique index mirroring `idx_assets_sha256_verified`).
+- `idx_assets_local_path_active` — **DONE, verified** in `schema.sql` (author-written, one typo round-tripped and fixed).
+- `AssetRepository.get_by_local_path()` — **DONE, verified.** Took three real rounds of bugs (SQL placeholder written literally instead of `?`, mis-indentation, then `str(local_path,)` vs. the correct `(str(local_path),)` — comma inside `str()`'s parens vs. outside it). Verified with a 3-case test: active row found, unrelated path → `None`, row marked `failed` → `None` (enabling retry).
+- Mid-way through this, caught a real process mistake: Claude pointed at `get_by_sha256_verified()` as "already-demonstrated syntax" without the author having written it themselves — a genuine Hard Rule violation. Corrected by actually teaching the `?`/tuple-parameter mechanism and `.fetchone()` with live, run examples before asking for another attempt. Full detail: `day05.md`.
+- Caught a real date bug in this docs system: the session continued treating itself as "Day 04" / 2026-07-03 for a while after actually running on 2026-07-05 (two days later), until checked directly via `date` in Claude's sandbox. Corrected in `decisions.md`.
+
+Not yet started: `secondbrain/ingest/discovery.py` itself; `pathlib.rglob()`/`mimetypes.guess_type()` not yet taught. One cleanup item: a leftover `#raise NotImplementedError` comment in `get_by_local_path()` should be deleted (harmless, just dead code).
 
 ---
 
@@ -180,13 +201,13 @@ secondbrain/catalog/asset_repository.py (complete: all 6 methods)
 
 ## Next Session
 
-Day 05 / Phase 2 — Ingestion (see `docs/day04.md` "Next Session" for full detail). This is where real files enter the picture for the first time — everything through Day 04 used one dummy test asset.
+`get_by_local_path()` is done and verified. Resume Phase 2 Discovery from here (full detail: `docs/day05.md` "Next Session"):
 
-1. Discovery: scan a real local folder for real files.
-2. SHA256 hashing of real files.
-3. Dedup check using `get_by_sha256_verified()` — first real exercise of the method built Day 04.
-4. Metadata extraction (EXIF, etc.).
-5. Upload pipeline to HF Buckets.
-6. Verification step, using `transition_status()` for real.
+1. Delete the leftover `#raise NotImplementedError` comment in `get_by_local_path()` (dead code, harmless).
+2. Teach `pathlib.rglob()` and `mimetypes.guess_type()` (new syntax, not yet shown).
+3. Scaffold `secondbrain/ingest/discovery.py` with TODOs.
+4. `experiments/test_discovery.py` — prove Discovery against a real folder, twice, confirming the second run skips already-tracked files.
 
-Reminder: `git status`/`git log` looked inconsistent in Claude's sandbox on Day 04 (likely a sandbox-side mount artifact, not a real repo problem — see `docs/day04.md` "Environment Note") — check directly on the author's machine before committing.
+After Discovery is fully done, the rest of Phase 2 remains: SHA256 hashing, dedup check (using `get_by_sha256_verified()`), metadata extraction, upload pipeline to HF Buckets, verification — each gets its own design pass, same pacing.
+
+Reminder: commit convention is one combined commit per session (`git add . && git commit -m "..." && git push` — see `readme.md`). Nothing from Day 05 has been committed yet.

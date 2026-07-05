@@ -6,6 +6,7 @@
 
 import json
 import sqlite3
+from pathlib import Path
 
 from secondbrain.models.asset import Asset
 from secondbrain.models.asset_type import AssetType
@@ -112,6 +113,28 @@ class AssetRepository:
         if row is None:
             return None
         return self._asset_from_row(row)
+
+    def get_by_local_path(self, local_path: Path) -> Asset | None:
+        """
+        TODO (Phase 2 Discovery, docs/phase2_ingestion_architecture.md §5):
+        Same shape as get_by_sha256_verified() just above -- one SELECT,
+        return None if nothing matches, otherwise self._asset_from_row(row).
+
+        The WHERE clause you need: local_path = ? AND storage_status != 'failed'
+        (matches the partial index from schema.sql -- != 'failed' rather than
+        = 'discovered', so a file mid-pipeline is still caught; only a
+        previously FAILED attempt at this path allows a fresh row).
+        """
+        
+        row = self.conn.execute(
+        "SELECT * from assets WHERE local_path = ? AND storage_status != 'failed'", (str(local_path),)
+        ).fetchone()
+
+        if row is None:
+            return None
+        return self._asset_from_row(row)
+
+        #raise NotImplementedError
 
     def add_tags(self, asset_id: str, tags: list[str]) -> None:
         exists = self.conn.execute(

@@ -379,9 +379,11 @@ Claude must never ask the author to write a line of code or SQL containing a syn
 
 Concrete check before writing any "now you write X" prompt: can I point to the exact syntax pattern, already demonstrated, for every new construct required in X? If not, show it first, then ask.
 
+**Clarified 2026-07-05:** pointing at an existing method *in the file* as "the pattern" does not satisfy this rule if the author didn't write that existing method themselves. `get_by_sha256_verified()` was written by Claude during the Day 04 drift — its presence in the file is not the same as the `?`/tuple-parameter mechanism and `.fetchone()` having been demonstrated to this author. "Already demonstrated" means demonstrated to the person, in this conversation (or a prior one they were actively part of) — not merely present somewhere in the codebase.
+
 Reason:
 
-This rule was promised once already today (after the PRAGMA/`conn.execute` incident) and broken twice more since (the multi-word negation/`sqlite3.Connection` mixup, and asking for a composite `PRIMARY KEY` with zero syntax shown). A promise made mid-conversation and not written down doesn't survive the next few turns, let alone a new session — exactly the failure mode this whole docs system exists to prevent. If the author ever has to ask "did you show me this syntax," that is a rule violation on Claude's part, not a gap in the author's preparation.
+This rule was promised once already today (after the PRAGMA/`conn.execute` incident) and broken twice more since (the multi-word negation/`sqlite3.Connection` mixup, and asking for a composite `PRIMARY KEY` with zero syntax shown). A promise made mid-conversation and not written down doesn't survive the next few turns, let alone a new session — exactly the failure mode this whole docs system exists to prevent. If the author ever has to ask "did you show me this syntax," that is a rule violation on Claude's part, not a gap in the author's preparation. Violated again on Day 05 in this new "pointing at existing code" shape — the clarification above closes that specific loophole.
 
 ---
 
@@ -394,3 +396,52 @@ Before giving the author any command whose exact behavior Claude hasn't already 
 Reason:
 
 Claude told the author `python -m sqlite3`'s interactive shell supported `.tables` and `.read` (assuming parity with the native `sqlite3` CLI) without checking. It didn't. The author burned several back-and-forth turns debugging a tool behavior Claude could have verified itself in seconds, since Claude has its own sandbox with Python available. Same underlying failure as the syntax rule above (asserting something as fact without having actually confirmed it), extended to tool/CLI behavior generally, not just taught syntax.
+
+---
+
+## 2026-07-05
+
+### Reaffirmed: scaffold-and-teach working mode, for Phase 2 onward
+
+Decision:
+
+All of Day 04 was built by Claude writing code directly (schema.py, asset_repository.py, etc.) rather than scaffolding it for the author to write, a silent drift from the Day 02 Working Mode agreement. Starting Phase 2, reverting explicitly: Claude scaffolds (signatures, docstrings, TODOs), explains the concept, and — per the existing Hard Rule — shows the exact syntax needed before asking the author to write anything with it. The author writes the logic; Claude reviews.
+
+Also reaffirmed: Phase 2 gets an architecture review doc (`phase2_ingestion_architecture.md`) before any code, same as Phase 1B's `phase1b_catalog_architecture.md`.
+
+Reason:
+
+The author explicitly said the goal is learning, not shipping fast — direct implementation optimizes for the wrong thing here. Worth naming explicitly rather than letting Day 04's pace quietly become the new default.
+
+---
+
+### Phase 2 Ingestion — Discovery: architectural decisions
+
+Full rationale: `docs/phase2_ingestion_architecture.md`. Scoped to Discovery only — Phase 2's other five items (hashing, dedup, metadata, upload, verification) get their own design passes later, same pacing as Phase 1B.
+
+Decision: Traversal via `pathlib.Path.rglob("*")`, not `os.walk`.
+Reason: Recursive in one call, stdlib only.
+
+Decision: `AssetType` classified by file extension via a lookup table; `note` is never produced by Discovery.
+Reason: No file extension naturally means "note" — reserved for something typed directly into the app later (Phase 4), not a discovered file.
+
+Decision: `mime_type` via stdlib `mimetypes.guess_type()`.
+Reason: No new dependency; extension-based is good enough for v1.
+
+Decision: Discovery checks `get_by_local_path()` before `create()`, skipping files already tracked in a non-`FAILED` status; enforced at the DB layer via a new partial unique index (`idx_assets_local_path_active`, `WHERE storage_status != 'failed'`), mirroring `idx_assets_sha256_verified` exactly.
+Reason: Without this, re-running Discovery on an already-scanned folder creates duplicate catalog rows for the same physical file — contradicts the README's "Resumable" principle. `!= 'failed'` rather than `= 'discovered'` so a file mid-pipeline (hashing, uploading, etc.) is still caught; only a previously `FAILED` attempt allows a fresh row.
+
+Decision: Errors during discovery (unreadable/in-use files) are skip-and-report, not fail-fast.
+Reason: A personal-archive tool scanning real, messy folders will hit bad files; failing the whole scan over one is worse than skipping and reporting at the end.
+
+---
+
+### Hard Rule: format chat responses for readability — spacing/emojis, not dense paragraphs
+
+Decision:
+
+Claude's chat responses (not files written to the repo — those stay plain prose/code, no emojis) should use short chunks, line breaks, and light emoji use as visual markers, rather than long unbroken paragraphs. Closer to how ChatGPT typically formats a reply than a dense wall of text.
+
+Reason:
+
+The author found long paragraph-after-paragraph responses hard to read. Explicitly requested this be persisted as a standing rule, not a one-off ask — same reasoning as the other two Hard Rules: a preference stated once mid-conversation doesn't survive into the next session unless it's written down.
