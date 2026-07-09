@@ -53,9 +53,9 @@ The domain model, asset lifecycle, SQLite schema, and full repository layer (`cr
 
 ```text
 ┌──────────────┐               ┌────────────────────┐
-│    SQLite    │               │     HF Buckets      │
-│ source of    │               │  blob storage        │
-│    truth     │               │  (photos, docs...)   │
+│    SQLite    │               │     HF Buckets     │
+│ source of    │               │  blob storage      │
+│    truth     │               │  (photos, docs...) │
 └──────────────┘               └────────────────────┘
 
   Local File
